@@ -162,7 +162,7 @@ class ScribeWriter:
             # Create Engine
             if not self._engine:
                 try:
-                    _LOGGER.debug(f"Creating AsyncEngine for {self.db_url.split('@')[-1]} (attempt 1)")
+                    _LOGGER.debug("Creating AsyncEngine (attempt 1)")
                     
                     if self.use_ssl:
                         # Resolve paths relative to HA config dir if they are relative
