@@ -236,9 +236,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             compress_after=compress_after,
             record_states=record_states,
             record_events=record_events,
-            batch_size=options.get(CONF_BATCH_SIZE, config.get(CONF_BATCH_SIZE, DEFAULT_BATCH_SIZE)),
-            flush_interval=options.get(CONF_FLUSH_INTERVAL, config.get(CONF_FLUSH_INTERVAL, DEFAULT_FLUSH_INTERVAL)),
-            max_queue_size=options.get(CONF_MAX_QUEUE_SIZE, config.get(CONF_MAX_QUEUE_SIZE, DEFAULT_MAX_QUEUE_SIZE)),
+            batch_size=int(options.get(CONF_BATCH_SIZE, config.get(CONF_BATCH_SIZE, DEFAULT_BATCH_SIZE))),
+            flush_interval=int(options.get(CONF_FLUSH_INTERVAL, config.get(CONF_FLUSH_INTERVAL, DEFAULT_FLUSH_INTERVAL))),
+            max_queue_size=int(options.get(CONF_MAX_QUEUE_SIZE, config.get(CONF_MAX_QUEUE_SIZE, DEFAULT_MAX_QUEUE_SIZE))),
             buffer_on_failure=options.get(CONF_BUFFER_ON_FAILURE, config.get(CONF_BUFFER_ON_FAILURE, DEFAULT_BUFFER_ON_FAILURE)),
             table_name_states=DEFAULT_TABLE_NAME_STATES,
             table_name_events=DEFAULT_TABLE_NAME_EVENTS,
@@ -505,6 +505,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 action = event.data.get("action")
                 entity_id = event.data.get("entity_id")
                 
+                # Handle Rename
+                if action == "update":
+                    old_entity_id = event.data.get("old_entity_id")
+                    if old_entity_id and old_entity_id != entity_id:
+                        _LOGGER.debug(f"Entity renamed: {old_entity_id} -> {entity_id}")
+                        await writer.rename_entity(old_entity_id, entity_id)
+
                 if action in ["create", "update"]:
                     _LOGGER.debug(f"Entity registry update: {action} {entity_id}")
                     try:
