@@ -8,6 +8,7 @@ import logging
 import asyncio
 import ssl
 import time
+import math
 from pathlib import Path
 from typing import Any, Dict
 from collections import deque
@@ -604,6 +605,30 @@ class ScribeWriter:
         except Exception as e:
              _LOGGER.warning(f"Failed to populate entity cache: {e}")
 
+    def _sanitize_json_value(self, value: Any) -> Any:
+        """Recursively sanitize values to be JSON-compatible.
+        
+        Converts Infinity, -Infinity, and NaN to None.
+        """
+        if isinstance(value, float):
+            if math.isinf(value):
+                # Convert Infinity to None (or you could use a large number like 1e308)
+                _LOGGER.debug(f"Sanitizing Infinity value to None")
+                return None
+            elif math.isnan(value):
+                # Convert NaN to None
+                _LOGGER.debug(f"Sanitizing NaN value to None")
+                return None
+            return value
+        elif isinstance(value, dict):
+            return {k: self._sanitize_json_value(v) for k, v in value.items()}
+        elif isinstance(value, list):
+            return [self._sanitize_json_value(item) for item in value]
+        elif isinstance(value, tuple):
+            return tuple(self._sanitize_json_value(item) for item in value)
+        else:
+            return value
+
     async def write_entities(self, entities: list[dict]):
         """Write entities to the database (upsert)."""
         if not self._engine or not entities:
@@ -617,6 +642,10 @@ class ScribeWriter:
                 for field in text_fields:
                     if entity.get(field) is not None:
                         entity[field] = str(entity[field]).replace("\0", "")
+                
+                # Sanitize capabilities JSON to remove Infinity/NaN
+                if "capabilities" in entity and entity["capabilities"]:
+                    entity["capabilities"] = self._sanitize_json_value(entity["capabilities"])
 
             async with self._engine.begin() as conn:
                 # Upsert entities
